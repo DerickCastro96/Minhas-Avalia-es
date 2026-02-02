@@ -93,6 +93,9 @@
         .btn-secondary { background: #333; color: white; }
         .btn-success { background: var(--status-green); color: white; }
         .btn-warning { background: var(--status-yellow); color: black; }
+        
+        /* Classe para esconder campos dinamicamente */
+        .hidden-field { display: none !important; }
     </style>
 </head>
 <body>
@@ -180,6 +183,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     const card = document.createElement('div');
                     card.className = 'poster-card';
                     const bannerText = r.status === 'finished' ? 'FINALIZADO' : r.status === 'abandoned' ? 'DESISTIDO' : 'ASSISTINDO';
+                    
+                    // Lógica para mostrar T/E apenas em Séries
+                    let progressText = '';
+                    if (r.status !== 'finished') {
+                        if (r.format === 'Série') {
+                            progressText = `T${r.season || '?'} E${r.episode || '?'}`;
+                        } else {
+                            progressText = 'Assistindo...';
+                        }
+                    } else {
+                        progressText = '★ ' + r.score;
+                    }
+
                     card.innerHTML = `
                         <div class="status-banner ${r.status}-banner">${bannerText}</div>
                         ${r.isFavorite ? '<div class="favorite-star">⭐</div>' : ''}
@@ -187,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="poster-overlay">
                             <p style="font-size:0.7rem; color:var(--edit-blue)">${r.format}</p>
                             <h4>${r.title}</h4>
-                            <p style="color:var(--status-yellow)">${r.status === 'finished' ? '★ '+r.score : 'T'+r.season+' E'+r.episode}</p>
+                            <p style="color:var(--status-yellow)">${progressText}</p>
                         </div>`;
                     card.onclick = () => showDetailsPage(r.id, reviews);
                     g.appendChild(card);
@@ -227,7 +243,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <div class="details-section-box" style="border-color:#444"><h3>Resumo Final/Crítica</h3><p>${r.comments || '-'}</p></div>
                     ` : `
-                        <div class="details-section-box"><h3>Progresso Atual</h3><p>Temporada ${r.season || '?'} | Episódio ${r.episode || '?'}</p></div>
+                        <div class="details-section-box">
+                            <h3>Progresso Atual</h3>
+                            <p>${r.format === 'Série' ? `Temporada ${r.season || '?'} | Episódio ${r.episode || '?'}` : 'Filme em andamento'}</p>
+                        </div>
                     `}
                     <div class="details-actions">
                         <button class="btn btn-secondary" onclick="location.reload()">Voltar</button>
@@ -273,8 +292,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="form-row">
                     <div><label class="form-label">Formato</label>
                         <select id="f-format" class="form-select">
-                            <option ${review?.format === 'Filme' ? 'selected' : ''}>Filme</option>
-                            <option ${review?.format === 'Série' ? 'selected' : ''}>Série</option>
+                            <option value="Filme" ${review?.format === 'Filme' ? 'selected' : ''}>Filme</option>
+                            <option value="Série" ${review?.format === 'Série' ? 'selected' : ''}>Série</option>
                         </select>
                     </div>
                     <div><label class="form-label">Gênero</label><input type="text" id="f-genre" class="form-control" value="${review?.genre || ''}"></div>
@@ -299,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="mb-3"><label class="form-label">Resumo Final/Crítica</label><textarea id="f-comments" class="form-control" rows="2">${review?.comments || ''}</textarea></div>
                 ` : `
-                    <div class="form-row">
+                    <div class="form-row" id="series-progress-fields">
                         <div><label class="form-label">Temporada</label><input type="number" id="f-season" class="form-control" value="${review?.season || ''}"></div>
                         <div><label class="form-label">Episódio</label><input type="number" id="f-ep" class="form-control" value="${review?.episode || ''}"></div>
                     </div>
@@ -308,6 +327,25 @@ document.addEventListener('DOMContentLoaded', function() {
             </form>
         `;
         document.getElementById('modal-backdrop').style.display='flex';
+
+        // Lógica condicional para o formulário (Mostrar/Esconder Temporada)
+        const formatSelect = document.getElementById('f-format');
+        const progressFields = document.getElementById('series-progress-fields');
+
+        const toggleProgressFields = () => {
+            if (progressFields) {
+                if (formatSelect.value === 'Série') {
+                    progressFields.classList.remove('hidden-field');
+                } else {
+                    progressFields.classList.add('hidden-field');
+                }
+            }
+        };
+
+        if (formatSelect) {
+            formatSelect.onchange = toggleProgressFields;
+            toggleProgressFields(); // Executa ao abrir
+        }
 
         document.getElementById('r-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -336,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 image: img || '',
                 title: document.getElementById('f-title').value,
                 year: document.getElementById('f-year').value,
-                format: document.getElementById('f-format').value,
+                format: formatSelect.value,
                 genre: document.getElementById('f-genre').value,
                 lore: document.getElementById('f-lore').value,
                 ...(isFin ? {
@@ -350,8 +388,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     comments: document.getElementById('f-comments').value,
                     season: '', episode: ''
                 } : {
-                    season: document.getElementById('f-season').value,
-                    episode: document.getElementById('f-ep').value,
+                    season: formatSelect.value === 'Série' ? document.getElementById('f-season').value : '',
+                    episode: formatSelect.value === 'Série' ? document.getElementById('f-ep').value : '',
                     score: '', isFavorite: false
                 })
             };
