@@ -94,7 +94,6 @@
         .btn-success { background: var(--status-green); color: white; }
         .btn-warning { background: var(--status-yellow); color: black; }
         
-        /* Classe para esconder campos dinamicamente */
         .hidden-field { display: none !important; }
     </style>
 </head>
@@ -184,14 +183,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     card.className = 'poster-card';
                     const bannerText = r.status === 'finished' ? 'FINALIZADO' : r.status === 'abandoned' ? 'DESISTIDO' : 'ASSISTINDO';
                     
-                    // Lógica para mostrar T/E apenas em Séries
                     let progressText = '';
                     if (r.status !== 'finished') {
-                        if (r.format === 'Série') {
-                            progressText = `T${r.season || '?'} E${r.episode || '?'}`;
-                        } else {
-                            progressText = 'Assistindo...';
-                        }
+                        progressText = (r.format === 'Série') ? `T${r.season || '?'} E${r.episode || '?'}` : 'Assistindo...';
                     } else {
                         progressText = '★ ' + r.score;
                     }
@@ -226,12 +220,15 @@ document.addEventListener('DOMContentLoaded', function() {
         dp.style.display = 'block';
         window.scrollTo(0,0);
 
+        // Inclusão da Nota no cabeçalho dos detalhes
+        const scoreInfo = r.status === 'finished' ? ` • Nota: <span style="color:var(--status-yellow); font-weight:bold;">${r.score}/10</span>` : '';
+
         dp.innerHTML = `
             <div class="details-container">
                 <div class="details-poster"><img src="${r.image}"></div>
                 <div class="details-info">
                     <h2>${r.isFavorite ? '⭐ ' : ''}${r.title} (${r.year})</h2>
-                    <p style="color:var(--text-gray); margin-bottom:20px">${r.format} • ${r.genre || 'Gênero não informado'}</p>
+                    <p style="color:var(--text-gray); margin-bottom:20px">${r.format} • ${r.genre || 'Gênero não informado'}${scoreInfo}</p>
                     <div class="details-section-box"><h3>Lore / Sinopse</h3><p>${r.lore || '-'}</p></div>
                     ${r.status === 'finished' ? `
                         <div class="tech-grid">
@@ -262,12 +259,8 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         if(logged) {
-            if(document.getElementById('finish-btn')) {
-                document.getElementById('finish-btn').onclick = () => showEditModal({review: r, forceFinished: true});
-            }
-            if(document.getElementById('resume-btn')) {
-                document.getElementById('resume-btn').onclick = () => showEditModal({review: r, forceInProgress: true});
-            }
+            if(document.getElementById('finish-btn')) document.getElementById('finish-btn').onclick = () => showEditModal({review: r, forceFinished: true});
+            if(document.getElementById('resume-btn')) document.getElementById('resume-btn').onclick = () => showEditModal({review: r, forceInProgress: true});
             document.getElementById('e-btn').onclick = () => showEditModal({review: r});
             document.getElementById('d-btn').onclick = async () => { if(confirm('Apagar da nuvem?')) { await db.collection('avaliacoes').doc(id).delete(); location.reload(); }};
         }
@@ -277,7 +270,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let status = review ? review.status : newStatus;
         if (forceFinished) status = 'finished';
         if (forceInProgress) status = 'in-progress';
-        
         const isFin = status === 'finished';
 
         document.getElementById('modal-content').innerHTML = `
@@ -328,24 +320,12 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.getElementById('modal-backdrop').style.display='flex';
 
-        // Lógica condicional para o formulário (Mostrar/Esconder Temporada)
         const formatSelect = document.getElementById('f-format');
         const progressFields = document.getElementById('series-progress-fields');
-
         const toggleProgressFields = () => {
-            if (progressFields) {
-                if (formatSelect.value === 'Série') {
-                    progressFields.classList.remove('hidden-field');
-                } else {
-                    progressFields.classList.add('hidden-field');
-                }
-            }
+            if (progressFields) formatSelect.value === 'Série' ? progressFields.classList.remove('hidden-field') : progressFields.classList.add('hidden-field');
         };
-
-        if (formatSelect) {
-            formatSelect.onchange = toggleProgressFields;
-            toggleProgressFields(); // Executa ao abrir
-        }
+        if (formatSelect) { formatSelect.onchange = toggleProgressFields; toggleProgressFields(); }
 
         document.getElementById('r-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -370,8 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const data = {
-                status: status,
-                image: img || '',
+                status: status, image: img || '',
                 title: document.getElementById('f-title').value,
                 year: document.getElementById('f-year').value,
                 format: formatSelect.value,
@@ -398,9 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(review) await db.collection('avaliacoes').doc(review.id).set(data);
                 else await db.collection('avaliacoes').add(data);
                 location.reload();
-            } catch (err) {
-                alert("Erro ao salvar! Verifique as regras do Firestore.");
-            }
+            } catch (err) { alert("Erro ao salvar!"); }
         };
     }
 
@@ -429,7 +406,6 @@ document.addEventListener('DOMContentLoaded', function() {
             b.onclick = () => {
                 const m = prompt('Email Administrativo:'); const p = prompt('Senha:');
                 if(m === ADMIN_LOGIN && p === ADMIN_PASS) { sessionStorage.setItem('isLoggedIn','true'); location.reload(); }
-                else { alert('Credenciais inválidas.'); }
             };
             hb.appendChild(b);
         }
