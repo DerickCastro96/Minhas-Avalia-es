@@ -88,6 +88,10 @@
         .mb-3 { margin-bottom: 20px; }
         .form-label { display: block; margin-bottom: 8px; color: var(--text-gray); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; }
         .form-control, .form-select { width: 100%; padding: 12px; background: var(--input-bg); border: 1px solid #333; color: white; border-radius: 6px; }
+        
+        /* Ajuste para textareas no formulário */
+        textarea.form-control { resize: vertical; min-height: 60px; font-family: inherit; line-height: 1.4; }
+
         .btn { padding: 14px 28px; border-radius: 4px; cursor: pointer; border: none; font-weight: 700; text-transform: uppercase; transition: 0.2s; margin-right: 10px; margin-bottom: 10px; }
         .btn-primary { background: var(--netflix-red); color: white; }
         .btn-secondary { background: #333; color: white; }
@@ -151,6 +155,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const ADMIN_LOGIN = 'd_erick96@outlook.com';
     const ADMIN_PASS = '668541230';
 
+    // Utilitário para formatar texto vindo do banco (preservar quebras de linha)
+    const formatTxt = (str) => str ? str.replace(/\n/g, '<br>') : '-';
+
     async function loadAndRenderReviews() {
         try {
             const snapshot = await db.collection('avaliacoes').get();
@@ -183,12 +190,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     card.className = 'poster-card';
                     const bannerText = r.status === 'finished' ? 'FINALIZADO' : r.status === 'abandoned' ? 'DESISTIDO' : 'ASSISTINDO';
                     
-                    let progressText = '';
-                    if (r.status !== 'finished') {
-                        progressText = (r.format === 'Série') ? `T${r.season || '?'} E${r.episode || '?'}` : 'Assistindo...';
-                    } else {
-                        progressText = '★ ' + r.score;
-                    }
+                    let progressText = r.status !== 'finished' ? 
+                        ((r.format === 'Série') ? `T${r.season || '?'} E${r.episode || '?'}` : 'Assistindo...') : 
+                        ('★ ' + r.score);
 
                     card.innerHTML = `
                         <div class="status-banner ${r.status}-banner">${bannerText}</div>
@@ -228,16 +232,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="details-info">
                     <h2>${r.isFavorite ? '⭐ ' : ''}${r.title} (${r.year})</h2>
                     <p style="color:var(--text-gray); margin-bottom:20px">${r.format} • ${r.genre || 'Gênero não informado'}${scoreInfo}</p>
-                    <div class="details-section-box"><h3>Lore / Sinopse</h3><p>${r.lore || '-'}</p></div>
+                    <div class="details-section-box"><h3>Lore / Sinopse</h3><p>${formatTxt(r.lore)}</p></div>
                     ${r.status === 'finished' ? `
                         <div class="tech-grid">
-                            <div class="details-section-box"><h3>História</h3><p>${r.script || '-'}</p></div>
-                            <div class="details-section-box"><h3>Personagens</h3><p>${r.characters || '-'}</p></div>
-                            <div class="details-section-box"><h3>Arte/Fotografia</h3><p>${r.cinematography || '-'}</p></div>
-                            <div class="details-section-box"><h3>Trilha/Efeitos Sonoros</h3><p>${r.soundtrack || '-'}</p></div>
-                            <div class="details-section-box"><h3>VFX/CGI</h3><p>${r.vfx || '-'}</p></div>
+                            <div class="details-section-box"><h3>História</h3><p>${formatTxt(r.script)}</p></div>
+                            <div class="details-section-box"><h3>Personagens</h3><p>${formatTxt(r.characters)}</p></div>
+                            <div class="details-section-box"><h3>Arte/Fotografia</h3><p>${formatTxt(r.cinematography)}</p></div>
+                            <div class="details-section-box"><h3>Trilha/Efeitos Sonoros</h3><p>${formatTxt(r.soundtrack)}</p></div>
+                            <div class="details-section-box"><h3>VFX/CGI</h3><p>${formatTxt(r.vfx)}</p></div>
                         </div>
-                        <div class="details-section-box" style="border-color:#444"><h3>Resumo Final/Crítica</h3><p>${r.comments || '-'}</p></div>
+                        <div class="details-section-box" style="border-color:#444"><h3>Resumo Final/Crítica</h3><p>${formatTxt(r.comments)}</p></div>
                     ` : `
                         <div class="details-section-box">
                             <h3>Progresso Atual</h3>
@@ -294,22 +298,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="mb-3"><label class="form-label">Lore / Sinopse</label><textarea id="f-lore" class="form-control" rows="2">${review?.lore || ''}</textarea></div>
                 
                 ${isFin ? `
+                    <div class="mb-3"><label class="form-label">História</label><textarea id="f-script" class="form-control">${review?.script || ''}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Personagens</label><textarea id="f-char" class="form-control">${review?.characters || ''}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Arte/Fotografia</label><textarea id="f-cin" class="form-control">${review?.cinematography || ''}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Trilha/Efeitos Sonoros</label><textarea id="f-trilha" class="form-control">${review?.soundtrack || ''}</textarea></div>
+                    <div class="mb-3"><label class="form-label">VFX/CGI</label><textarea id="f-vfx" class="form-control">${review?.vfx || ''}</textarea></div>
+                    
                     <div class="form-row">
-                        <div><label class="form-label">História</label><input type="text" id="f-script" class="form-control" value="${review?.script || ''}"></div>
-                        <div><label class="form-label">Personagens</label><input type="text" id="f-char" class="form-control" value="${review?.characters || ''}"></div>
-                    </div>
-                    <div class="form-row">
-                        <div><label class="form-label">Arte/Fotografia</label><input type="text" id="f-cin" class="form-control" value="${review?.cinematography || ''}"></div>
-                        <div><label class="form-label">Trilha/Efeitos Sonoros</label><input type="text" id="f-trilha" class="form-control" value="${review?.soundtrack || ''}"></div>
-                    </div>
-                    <div class="form-row">
-                        <div><label class="form-label">VFX/CGI</label><input type="text" id="f-vfx" class="form-control" value="${review?.vfx || ''}"></div>
                         <div><label class="form-label">Nota</label><input type="number" step="0.1" id="f-score" class="form-control" value="${review?.score || ''}" required></div>
+                        <div style="padding-top:25px"><label><input type="checkbox" id="f-fav" ${review?.isFavorite ? 'checked' : ''}> Favorito ⭐</label></div>
                     </div>
-                    <div class="mb-3">
-                        <label><input type="checkbox" id="f-fav" ${review?.isFavorite ? 'checked' : ''}> Favorito ⭐</label>
-                    </div>
-                    <div class="mb-3"><label class="form-label">Resumo Final/Crítica</label><textarea id="f-comments" class="form-control" rows="2">${review?.comments || ''}</textarea></div>
+                    <div class="mb-3"><label class="form-label">Resumo Final/Crítica</label><textarea id="f-comments" class="form-control" rows="3">${review?.comments || ''}</textarea></div>
                 ` : `
                     <div class="form-row" id="series-progress-fields">
                         <div><label class="form-label">Temporada</label><input type="number" id="f-season" class="form-control" value="${review?.season || ''}"></div>
@@ -344,14 +343,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
                             res(c.toDataURL('image/jpeg', 0.8));
                         };
-                        i.src = ev.target.result;
+                        img.src = ev.target.result;
                     };
                     reader.readAsDataURL(file);
                 });
             }
 
             const data = {
-                status: status, image: img || '',
+                status, image: img || '',
                 title: document.getElementById('f-title').value,
                 year: document.getElementById('f-year').value,
                 format: formatSelect.value,
