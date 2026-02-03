@@ -88,9 +88,7 @@
         .mb-3 { margin-bottom: 20px; }
         .form-label { display: block; margin-bottom: 8px; color: var(--text-gray); font-size: 0.8rem; text-transform: uppercase; font-weight: 700; }
         .form-control, .form-select { width: 100%; padding: 12px; background: var(--input-bg); border: 1px solid #333; color: white; border-radius: 6px; }
-        
-        /* Ajuste para textareas no formulário */
-        textarea.form-control { resize: vertical; min-height: 60px; font-family: inherit; line-height: 1.4; }
+        textarea.form-control { resize: vertical; min-height: 80px; font-family: inherit; }
 
         .btn { padding: 14px 28px; border-radius: 4px; cursor: pointer; border: none; font-weight: 700; text-transform: uppercase; transition: 0.2s; margin-right: 10px; margin-bottom: 10px; }
         .btn-primary { background: var(--netflix-red); color: white; }
@@ -155,7 +153,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const ADMIN_LOGIN = 'd_erick96@outlook.com';
     const ADMIN_PASS = '668541230';
 
-    // Utilitário para formatar texto vindo do banco (preservar quebras de linha)
     const formatTxt = (str) => str ? str.replace(/\n/g, '<br>') : '-';
 
     async function loadAndRenderReviews() {
@@ -329,28 +326,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('r-form').onsubmit = async (e) => {
             e.preventDefault();
-            let img = review?.image;
+            let imgData = review?.image || '';
             const file = document.getElementById('f-img').files[0];
 
             if(file) {
-                img = await new Promise(res => {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const i = new Image();
-                        i.onload = () => {
-                            const c = document.createElement('canvas');
-                            c.width = 400; c.height = (i.height * 400) / i.width;
-                            c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
-                            res(c.toDataURL('image/jpeg', 0.8));
+                try {
+                    imgData = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            const i = new Image();
+                            i.onload = () => {
+                                const c = document.createElement('canvas');
+                                const ctx = c.getContext('2d');
+                                c.width = 400; 
+                                c.height = (i.height * 400) / i.width;
+                                ctx.drawImage(i, 0, 0, c.width, c.height);
+                                resolve(c.toDataURL('image/jpeg', 0.8));
+                            };
+                            i.onerror = reject;
+                            i.src = ev.target.result; // AQUI ESTAVA O ERRO (CORRIGIDO PARA i.src)
                         };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                });
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                } catch (err) {
+                    alert("Erro ao processar imagem.");
+                    return;
+                }
             }
 
             const data = {
-                status, image: img || '',
+                status: status, 
+                image: imgData,
                 title: document.getElementById('f-title').value,
                 year: document.getElementById('f-year').value,
                 format: formatSelect.value,
@@ -369,7 +376,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } : {
                     season: formatSelect.value === 'Série' ? document.getElementById('f-season').value : '',
                     episode: formatSelect.value === 'Série' ? document.getElementById('f-ep').value : '',
-                    score: '', isFavorite: false
+                    score: '', isFavorite: false,
+                    script: '', characters: '', cinematography: '', soundtrack: '', vfx: '', comments: ''
                 })
             };
 
@@ -377,7 +385,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(review) await db.collection('avaliacoes').doc(review.id).set(data);
                 else await db.collection('avaliacoes').add(data);
                 location.reload();
-            } catch (err) { alert("Erro ao salvar!"); }
+            } catch (err) { 
+                console.error(err);
+                alert("Erro ao salvar no Firebase. Verifique se o tamanho da imagem não excedeu o limite de 1MB."); 
+            }
         };
     }
 
